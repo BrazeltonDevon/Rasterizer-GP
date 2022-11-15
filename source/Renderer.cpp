@@ -1,6 +1,7 @@
 //External includes
 #include "SDL.h"
 #include "SDL_surface.h"
+#include <iostream>
 
 //Project includes
 #include "Renderer.h"
@@ -22,7 +23,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_pBackBuffer = SDL_CreateRGBSurface(0, m_Width, m_Height, 32, 0, 0, 0, 0);
 	m_pBackBufferPixels = (uint32_t*)m_pBackBuffer->pixels;
 
-	//m_pDepthBufferPixels = new float[m_Width * m_Height];
+	m_pDepthBufferPixels = new float[m_Width * m_Height];
 
 	//Initialize Camera
 	m_Camera.Initialize(60.f, { .0f,.0f,-10.f });
@@ -30,7 +31,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 
 Renderer::~Renderer()
 {
-	//delete[] m_pDepthBufferPixels;
+	delete[] m_pDepthBufferPixels;
 }
 
 void Renderer::Update(Timer* pTimer)
@@ -75,6 +76,7 @@ void Renderer::Render()
 void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
 {
 	//Todo > W1 Projection Stage
+
 }
 
 bool Renderer::SaveBufferToImage() const
