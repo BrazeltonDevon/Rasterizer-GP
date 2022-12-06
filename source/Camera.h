@@ -5,6 +5,8 @@
 
 #include "Math.h"
 #include "Timer.h"
+#include <iostream>
+#include <algorithm>
 
 namespace dae
 {
@@ -23,6 +25,9 @@ namespace dae
 		float fovAngle{ 90.f };
 		float fov{ tanf((fovAngle * TO_RADIANS) / 2.f) };
 		float aspectRatio{};
+
+		const float movementSpeed{ 5.0f };
+		const float rotationSpeed{ 10.0f };
 
 		Vector3 forward{ Vector3::UnitZ };
 		Vector3 up{ Vector3::UnitY };
@@ -92,89 +97,85 @@ namespace dae
 		void Update(Timer* pTimer)
 		{
 			const float deltaTime = pTimer->GetElapsed();
-
-			const float movementSpeed = 8.f;
-			const float mouseSens = 0.006f;
-
-			DoKeyboardInput(deltaTime, movementSpeed);
-
-			DoMouseInput(deltaTime, movementSpeed, mouseSens);
-
-			Matrix finalRot{ Matrix::CreateRotation(totalPitch, totalYaw, 0) };
-
-			forward = finalRot.TransformVector(Vector3::UnitZ);
-			forward.Normalize();
-
-
-
-
-			//Update Matrices
-			CalculateViewMatrix();
-			CalculateProjectionMatrix(); //Try to optimize this - should only be called once or when fov/aspectRatio changes
-		}
-
-		void DoKeyboardInput(float deltaTime, float moveSpeed)
-		{
-
-			//Keyboard Input
 			const uint8_t* pKeyboardState = SDL_GetKeyboardState(nullptr);
+
+			// keyboard movement
 			if (pKeyboardState[SDL_SCANCODE_W])
 			{
-				origin += moveSpeed * deltaTime * forward;
+				origin += forward * movementSpeed * deltaTime;
 			}
 			if (pKeyboardState[SDL_SCANCODE_S])
 			{
-				origin -= moveSpeed * deltaTime * forward;
-			}
-			if (pKeyboardState[SDL_SCANCODE_A])
-			{
-				origin -= moveSpeed * deltaTime * right;
+				origin -= forward * movementSpeed * deltaTime;
 			}
 			if (pKeyboardState[SDL_SCANCODE_D])
 			{
-				origin += moveSpeed * deltaTime * right;
+				origin += right * movementSpeed * deltaTime;
 			}
-			if (pKeyboardState[SDL_SCANCODE_Q])
+			if (pKeyboardState[SDL_SCANCODE_A])
 			{
-				origin.y -= moveSpeed * deltaTime;
+				origin -= right * movementSpeed * deltaTime;
 			}
-			if (pKeyboardState[SDL_SCANCODE_E])
+			if (pKeyboardState[SDL_SCANCODE_SPACE])
 			{
-				origin.y += moveSpeed * deltaTime;
+				origin += up * movementSpeed * deltaTime;
 			}
-		}
+			if (pKeyboardState[SDL_SCANCODE_LSHIFT])
+			{
+				origin -= up * movementSpeed * deltaTime;
+			}
 
-		void DoMouseInput(float deltaTime, float moveSpeed, float mouseSens)
-		{
-			//Mouse Input
+
+			//mouse input
 			int mouseX{}, mouseY{};
 			const uint32_t mouseState = SDL_GetRelativeMouseState(&mouseX, &mouseY);
 
-			if (mouseState & SDL_BUTTON_RMASK && mouseState & SDL_BUTTON_LMASK)
+			// mouse movement & rotation
+			if ((mouseState & SDL_BUTTON(SDL_BUTTON_LEFT)) && mouseState & SDL_BUTTON(SDL_BUTTON_RIGHT))
 			{
-				origin.y -= moveSpeed * deltaTime * mouseY;
+				const float upwards = -mouseY * movementSpeed * deltaTime;
+				origin += up * upwards;
 			}
-			else if (mouseState & SDL_BUTTON_RMASK)
+			else if (mouseState & SDL_BUTTON(SDL_BUTTON_LEFT))
 			{
-				totalYaw += mouseSens * mouseX;
-				totalPitch -= mouseSens * mouseY;
-				if (abs(totalPitch) >= float(M_PI) / 2.f)
-				{
-					if (totalPitch < 0)
-					{
-						totalPitch = -float(M_PI) / 2.001f;
-					}
-					else
-					{
-						totalPitch = float(M_PI) / 2.001f;
-					}
-				}
+				// not satisfied with speed at which the yaw was moving, added multiplier
+				// to make it a bit faster
+				const float multiplier{ 2.f };
+				const float forwards = -mouseY * deltaTime;
+				const float yaw = mouseX * multiplier * deltaTime;
+
+				origin += forward * forwards;
+				totalYaw += yaw;
+
+				//calculate rotation matrix
+				const Matrix finalRot = Matrix::CreateRotationX(totalPitch * TO_RADIANS) * Matrix::CreateRotationY(totalYaw * TO_RADIANS);
+				forward = finalRot.TransformVector(Vector3::UnitZ);
+				forward.Normalize();
 			}
-			else if (mouseState & SDL_BUTTON_LMASK)
+			else if (mouseState & SDL_BUTTON(SDL_BUTTON_RIGHT))
 			{
-				totalPitch -= mouseSens * mouseX;
-				this->origin -= moveSpeed * deltaTime * this->forward * float(mouseY);
+				const float pitch = -mouseY * rotationSpeed * deltaTime;
+				const float yaw = mouseX * rotationSpeed * deltaTime;
+
+				totalPitch += pitch;
+				totalYaw += yaw;
+
+				totalPitch = std::clamp(totalPitch, -88.0f, 88.0f);
+
+				if (totalYaw > 360.0f)
+					totalYaw -= 360.0f;
+				else if (totalYaw < 0.0f)
+					totalYaw += 360.0f;
+
+				// finally this works *cri* not straight CreateRotation but split in two
+				const Matrix finalRot = Matrix::CreateRotationX(totalPitch * TO_RADIANS) * Matrix::CreateRotationY(totalYaw * TO_RADIANS);
+				forward = finalRot.TransformVector(Vector3::UnitZ);
+				forward.Normalize();
 			}
+
+			CalculateViewMatrix();
+			CalculateProjectionMatrix();
 		}
+
 	};
 }
