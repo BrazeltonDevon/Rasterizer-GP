@@ -83,14 +83,14 @@ void Renderer::Render()
 
 void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
 {
-	//Todo > W1 Projection Stage
+	//W1 Projection Stage
 
 	vertices_out.clear();
 	vertices_out.reserve(vertices_in.size());
-	for (const auto& vertexIn : vertices_in)
+	for (const auto& vert_in : vertices_in)
 	{
 		Vertex vertexOut{};
-		vertexOut.position = m_Camera.invViewMatrix.TransformPoint(vertexIn.position);
+		vertexOut.position = m_Camera.invViewMatrix.TransformPoint(vert_in.position);
 
 		vertexOut.position.x = vertexOut.position.x / vertexOut.position.z / (m_Camera.fov * m_AspectRatio);
 		vertexOut.position.y = vertexOut.position.y / vertexOut.position.z / (m_Camera.fov);
@@ -98,6 +98,25 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 	}
 
 
+}
+
+void Renderer::VertexTransformationFunction(std::vector<Mesh>& meshes_in, std::vector<Mesh>& meshes_out)
+{
+	meshes_out.clear();
+	meshes_out.reserve(meshes_in.size());
+	for (auto const& mesh_in : meshes_in)
+	{
+		for (auto const& vert_in : mesh_in.vertices)
+		{
+			// for every vert input in the mesh input
+			Vertex vertexOut{};
+			vertexOut.position = m_Camera.invViewMatrix.TransformPoint(vert_in.position);
+
+			vertexOut.position.x = vertexOut.position.x / vertexOut.position.z / (m_Camera.fov * m_AspectRatio);
+			vertexOut.position.y = vertexOut.position.y / vertexOut.position.z / (m_Camera.fov);
+			
+		}
+	}
 }
 
 void dae::Renderer::RenderW6()
@@ -191,6 +210,56 @@ void dae::Renderer::RenderW6()
 
 void dae::Renderer::RenderW7()
 {
+	// Define Mesh
+	/*std::vector<Mesh> meshes_world
+	{
+		Mesh{
+			{
+				Vertex{{-3, 3, -2}},
+				Vertex{{0, 3, -2}},
+				Vertex{{3, 3, -2}},
+				Vertex{{-3, 0, -2}},
+				Vertex{{0, 0, -2}},
+				Vertex{{3, 0, -2}},
+				Vertex{{-3, -3, -2}},
+				Vertex{{0, -3, -2}},
+				Vertex{{3, -3, -2}}
+				},
+		{
+			3,0,4,1,5,2,
+			2,6,
+			6,3,7,4,8,5
+		},
+		PrimitiveTopology::TriangleStrip
+		}
+	};*/
+
+	// Define Mesh
+	std::vector<Mesh> meshes_world
+	{
+		Mesh{
+			{
+				Vertex{{-3, 3, -2}},
+				Vertex{{0, 3, -2}},
+				Vertex{{3, 3, -2}},
+				Vertex{{-3, 0, -2}},
+				Vertex{{0, 0, -2}},
+				Vertex{{3, 0, -2}},
+				Vertex{{-3, -3, -2}},
+				Vertex{{0, -3, -2}},
+				Vertex{{3, -3, -2}}
+				},
+		{
+			3,0,1,	1,4,3,	4,1,2,
+			2,5,4,	6,3,4,	4,7,6,
+			7,4,5,	5,8,7
+		},
+		PrimitiveTopology::TriangleList
+		}
+	};
+
+
+
 
 }
 

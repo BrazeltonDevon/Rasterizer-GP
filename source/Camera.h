@@ -26,8 +26,8 @@ namespace dae
 		float fov{ tanf((fovAngle * TO_RADIANS) / 2.f) };
 		float aspectRatio{};
 
-		const float movementSpeed{ 5.0f };
-		const float rotationSpeed{ 10.0f };
+		const float movementSpeed{ 10.0f };
+		const float rotationSpeed{ 20.0f };
 
 		Vector3 forward{ Vector3::UnitZ };
 		Vector3 up{ Vector3::UnitY };
@@ -127,8 +127,9 @@ namespace dae
 
 
 			//mouse input
-			int mouseX{}, mouseY{};
-			const uint32_t mouseState = SDL_GetRelativeMouseState(&mouseX, &mouseY);
+			int mouseX{};
+			int mouseY{};
+			const uint32_t mouseState{ SDL_GetRelativeMouseState(&mouseX, &mouseY) };
 
 			// mouse movement & rotation
 			if ((mouseState & SDL_BUTTON(SDL_BUTTON_LEFT)) && mouseState & SDL_BUTTON(SDL_BUTTON_RIGHT))
