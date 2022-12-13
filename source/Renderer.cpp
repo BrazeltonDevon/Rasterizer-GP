@@ -224,7 +224,7 @@ void dae::Renderer::RenderW6()
 void dae::Renderer::RenderW7()
 {
 	// Define Mesh
-	/*std::vector<Mesh> meshes_world
+	std::vector<Mesh> meshes_world
 	{
 		Mesh{
 			{
@@ -245,31 +245,31 @@ void dae::Renderer::RenderW7()
 		},
 		PrimitiveTopology::TriangleStrip
 		}
-	};*/
+	};
 
 	// Define Mesh
-	std::vector<Mesh> meshes_world
-	{
-		Mesh{
-			{
-				Vertex{{-3, 3, -2}},
-				Vertex{{0, 3, -2}},
-				Vertex{{3, 3, -2}},
-				Vertex{{-3, 0, -2}},
-				Vertex{{0, 0, -2}},
-				Vertex{{3, 0, -2}},
-				Vertex{{-3, -3, -2}},
-				Vertex{{0, -3, -2}},
-				Vertex{{3, -3, -2}}
-				},
-		{
-			3,0,1,	1,4,3,	4,1,2,
-			2,5,4,	6,3,4,	4,7,6,
-			7,4,5,	5,8,7
-		},
-		PrimitiveTopology::TriangleList
-		}
-	};
+	//std::vector<Mesh> meshes_world
+	//{
+	//	Mesh{
+	//		{
+	//			Vertex{{-3, 3, -2}},
+	//			Vertex{{0, 3, -2}},
+	//			Vertex{{3, 3, -2}},
+	//			Vertex{{-3, 0, -2}},
+	//			Vertex{{0, 0, -2}},
+	//			Vertex{{3, 0, -2}},
+	//			Vertex{{-3, -3, -2}},
+	//			Vertex{{0, -3, -2}},
+	//			Vertex{{3, -3, -2}}
+	//			},
+	//	{
+	//		3,0,1,	1,4,3,	4,1,2,
+	//		2,5,4,	6,3,4,	4,7,6,
+	//		7,4,5,	5,8,7
+	//	},
+	//	PrimitiveTopology::TriangleList
+	//	}
+	//};
 
 
 	for (const auto& mesh : meshes_world)
