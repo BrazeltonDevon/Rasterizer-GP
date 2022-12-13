@@ -48,9 +48,12 @@ namespace dae
 		int m_Width{};
 		int m_Height{};
 		float m_AspectRatio{};
+		Texture* m_pTexture{ nullptr };
 
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
-		void VertexTransformationFunction(std::vector<Mesh>& meshes_in, std::vector<Mesh>& meshes_out);
+		void VertexTransformationFunction(std::vector<Mesh>& meshes) const;
+		void RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vector2>& screenVertices, const std::vector<Vertex> ndcVertices, size_t vertIdx, bool swapVertices = false);
+
 		void RenderW6();
 		void RenderW7();
 	};
