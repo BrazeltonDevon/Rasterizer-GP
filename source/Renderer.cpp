@@ -247,15 +247,15 @@ void dae::Renderer::RenderW7()
 	{
 		Mesh{
 			{
-				Vertex{{-3, 3, -2}},
-				Vertex{{0, 3, -2}},
-				Vertex{{3, 3, -2}},
-				Vertex{{-3, 0, -2}},
-				Vertex{{0, 0, -2}},
-				Vertex{{3, 0, -2}},
-				Vertex{{-3, -3, -2}},
-				Vertex{{0, -3, -2}},
-				Vertex{{3, -3, -2}}
+				Vertex{{-3, 3, -2}, colors::White, Vector2{0,0}},
+				Vertex{{0, 3, -2}, colors::White, Vector2{.5f,0}},
+				Vertex{{3, 3, -2}, colors::White, Vector2{1.f,0}},
+				Vertex{{-3, 0, -2}, colors::White, Vector2{0,.5f}},
+				Vertex{{0, 0, -2}, colors::White, Vector2{.5f,.5f}},
+				Vertex{{3, 0, -2}, colors::White, Vector2{1.f,.5f}},
+				Vertex{{-3, -3, -2}, colors::White, Vector2{0,1.f}},
+				Vertex{{0, -3, -2}, colors::White, Vector2{.5f,1.f}},
+				Vertex{{3, -3, -2}, colors::White, Vector2{1.f,1.f}}
 				},
 		{
 			3,0,4,1,5,2,
@@ -271,15 +271,15 @@ void dae::Renderer::RenderW7()
 	//{
 	//	Mesh{
 	//		{
-	//			Vertex{{-3, 3, -2}},
-	//			Vertex{{0, 3, -2}},
-	//			Vertex{{3, 3, -2}},
-	//			Vertex{{-3, 0, -2}},
-	//			Vertex{{0, 0, -2}},
-	//			Vertex{{3, 0, -2}},
-	//			Vertex{{-3, -3, -2}},
-	//			Vertex{{0, -3, -2}},
-	//			Vertex{{3, -3, -2}}
+		//Vertex{ {-3, 3, -2}, colors::White, Vector2{0,0} },
+		//Vertex{ {0, 3, -2}, colors::White, Vector2{.5f,0} },
+		//Vertex{ {3, 3, -2}, colors::White, Vector2{1.f,0} },
+		//Vertex{ {-3, 0, -2}, colors::White, Vector2{0,.5f} },
+		//Vertex{ {0, 0, -2}, colors::White, Vector2{.5f,.5f} },
+		//Vertex{ {3, 0, -2}, colors::White, Vector2{1.f,.5f} },
+		//Vertex{ {-3, -3, -2}, colors::White, Vector2{0,1.f} },
+		//Vertex{ {0, -3, -2}, colors::White, Vector2{.5f,1.f} },
+		//Vertex{ {3, -3, -2}, colors::White, Vector2{1.f,1.f} }
 	//			},
 	//	{
 	//		3,0,1,	1,4,3,	4,1,2,
@@ -424,6 +424,25 @@ void dae::Renderer::RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vect
 	}
 
 
+}
+
+void dae::Renderer::SwitchVisualizationMethod()
+{
+	switch (m_VisualizationMethod)
+	{
+	case VisualizationMethod::FinalColor:
+	{
+		m_VisualizationMethod = VisualizationMethod::DepthBuffer;
+		break;
+	}
+	case VisualizationMethod::DepthBuffer:
+	{
+		m_VisualizationMethod = VisualizationMethod::FinalColor;
+		break;
+	}
+	default:
+		break;
+	}
 }
 
 bool Renderer::SaveBufferToImage() const

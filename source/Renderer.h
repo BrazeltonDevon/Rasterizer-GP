@@ -33,6 +33,7 @@ namespace dae
 		void Render();
 
 		bool SaveBufferToImage() const;
+		void SwitchVisualizationMethod();
 
 	private:
 		SDL_Window* m_pWindow{};
@@ -62,6 +63,7 @@ namespace dae
 		void VertexTransformationFunction(std::vector<Mesh>& meshes) const;
 		void RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vector2>& screenVertices, const std::vector<Vertex> ndcVertices, size_t vertIdx, bool swapVertices = false);
 		//void ConvertFromNDCtoScreen();
+
 
 		void RenderW6();
 		void RenderW7();
