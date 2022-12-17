@@ -14,7 +14,7 @@ using namespace dae;
 
 Renderer::Renderer(SDL_Window* pWindow) :
 	m_pWindow(pWindow),
-	m_pTexture{Texture::LoadFromFile("Resources/uv_grid_2.png")}
+	m_pTexture{}
 {
 	//Initialize
 	SDL_GetWindowSize(pWindow, &m_Width, &m_Height);
@@ -33,6 +33,8 @@ Renderer::Renderer(SDL_Window* pWindow) :
 
 	//Initialize Camera
 	m_Camera.Initialize(float(m_Width) / m_Height, 60.f, { 0.f, 5.f, -30.f });
+
+	m_pTexture = m_pTexture->LoadFromFile("Resources/uv_grid_2.png");
 }
 
 Renderer::~Renderer()
@@ -116,14 +118,31 @@ void Renderer::VertexTransformationFunction(std::vector<Mesh>& meshes) const
 		mesh.vertices_out.clear();
 		mesh.vertices_out.reserve(mesh.vertices.size());
 
+		Matrix wvProjectionMatrix = mesh.worldMatrix * m_Camera.viewMatrix * m_Camera.projectionMatrix;
+
 		for (auto const& vert_in : mesh.vertices)
 		{
 			// for every vert input in the mesh
 			Vertex_Out vert_out{};
-			vert_out.position = { m_Camera.invViewMatrix.TransformPoint(vert_in.position), 0 };
+
+
+			/*vert_out.position = { m_Camera.invViewMatrix.TransformPoint(vert_in.position), 0 };
 
 			vert_out.position.x = vert_out.position.x / vert_out.position.z / (m_Camera.fov * m_AspectRatio);
 			vert_out.position.y = vert_out.position.y / vert_out.position.z / (m_Camera.fov);
+			mesh.vertices_out.emplace_back(vert_out);*/
+
+			vert_out.position = wvProjectionMatrix.TransformPoint({ vert_in.position, 1.0f });
+
+			vert_out.position.x /= vert_out.position.w;
+			vert_out.position.y /= vert_out.position.w;
+			vert_out.position.z /= vert_out.position.w;
+
+			vert_out.color = vert_in.color;
+			vert_out.normal = vert_in.normal;
+			vert_out.uv = vert_in.uv;
+			vert_out.tangent = vert_in.tangent;
+
 			mesh.vertices_out.emplace_back(vert_out);
 		}
 	}
@@ -148,7 +167,7 @@ void dae::Renderer::RenderW6()
 
 	};
 
-
+	// Convert verts to NDC
 	std::vector<Vertex> verts_ndc;
 	VertexTransformationFunction(verts_world, verts_ndc);
 
@@ -318,19 +337,29 @@ void dae::Renderer::RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vect
 	
 	if (vertIdx0 == vertIdx1 || vertIdx1 == vertIdx2 || vertIdx2 == vertIdx0) return;
 
+	// Setting up bounding box
 	Vector2 boundingBoxMin{ Vector2::Min(screenVertices[vertIdx0], Vector2::Min(screenVertices[vertIdx1], screenVertices[vertIdx2])) };
 	Vector2 boundingBoxMax{ Vector2::Max(screenVertices[vertIdx0], Vector2::Max(screenVertices[vertIdx1], screenVertices[vertIdx2])) };
 
 	const Vector2 screenVector{ static_cast<float>(m_Width), static_cast<float>(m_Height) };
+
+	// Setting up bounding box in NDC
 	boundingBoxMin = Vector2::Max(Vector2::Zero, Vector2::Min(boundingBoxMin, screenVector));
 	boundingBoxMax = Vector2::Max(Vector2::Zero, Vector2::Min(boundingBoxMax, screenVector));
+
+
+
 	for (int px{ static_cast<int>(boundingBoxMin.x) }; px < boundingBoxMax.x; ++px)
 	{
 		for (int py{ static_cast<int>(boundingBoxMin.y) }; py < boundingBoxMax.y; ++py)
 		{
+			// Final color variable
+			ColorRGB finalColor{ colors::Black };
+
+
 			const int pixelIdx{ px + py * m_Width };
 			const Vector2 pixelCoordinates{ static_cast<float>(px), static_cast<float>(py) };
-			float signedAreaV0V1, signedAreaV1V2, signedAreaV2V0;
+			float signedAreaV0V1{}, signedAreaV1V2{}, signedAreaV2V0{};
 
 			if (GeometryUtils::IsPointInTriangle(screenVertices[vertIdx0], screenVertices[vertIdx1],
 				screenVertices[vertIdx2], pixelCoordinates, signedAreaV0V1, signedAreaV1V2, signedAreaV2V0))
@@ -346,24 +375,42 @@ void dae::Renderer::RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vect
 				const float depthV1{ ndcVertices[vertIdx1].position.z };
 				const float depthV2{ ndcVertices[vertIdx2].position.z };
 
-				const float depthInterpolated
-				{
-					1.f / (1.f / depthV0 * weightV0 +
-					1.f / depthV1 * weightV1 +
-					1.f / depthV2 * weightV2)
-				};
+					// switch for changing between with or without depth buffer
+					switch (m_VisualizationMethod)
+					{
+					case VisualizationMethod::FinalColor:
+					{
+						//sampling the UV coordinates and color
+						const float depthInterpolated
+						{
+							1.f / ((1.f / depthV0) * weightV0 +
+							(1.f / depthV1) * weightV1 +
+							(1.f / depthV2) * weightV2)
+						};
 
-				if (m_pDepthBufferPixels[pixelIdx] < depthInterpolated) continue;
-				m_pDepthBufferPixels[pixelIdx] = depthInterpolated;
+						if (m_pDepthBufferPixels[pixelIdx] < depthInterpolated) continue;
+						m_pDepthBufferPixels[pixelIdx] = depthInterpolated;
 
-				Vector2 pixelUV
-				{
-					(mesh.vertices[vertIdx0].uv / depthV0 * weightV0 +
-					mesh.vertices[vertIdx1].uv / depthV1 * weightV1 +
-					mesh.vertices[vertIdx2].uv / depthV2 * weightV2) * depthInterpolated
-				};
-				ColorRGB finalColor{ m_pTexture->Sample(pixelUV) };
+						Vector2 pixelUV
+						{
+							(mesh.vertices[vertIdx0].uv / depthV0 * weightV0 +
+							mesh.vertices[vertIdx1].uv / depthV1 * weightV1 +
+							mesh.vertices[vertIdx2].uv / depthV2 * weightV2) * depthInterpolated
+						};
 
+						finalColor = m_pTexture->Sample(pixelUV);
+						break;
+					}
+					case VisualizationMethod::DepthBuffer:
+					{
+						const float depthRemapSize{ 0.005f };
+
+						//float remapedBufferVal{ ZBufferVal };
+						//DepthRemap(remapedBufferVal, depthRemapSize);
+						//finalColor = ColorRGB{ remapedBufferVal, remapedBufferVal , remapedBufferVal };
+						break;
+					}
+					}
 
 				//Update Color in Buffer
 				finalColor.MaxToOne();
