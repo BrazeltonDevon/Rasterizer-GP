@@ -387,7 +387,7 @@ void dae::Renderer::RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vert
 	//}
 
 	if (vertIdx0 == vertIdx1 || vertIdx1 == vertIdx2 || vertIdx2 == vertIdx0) return;
-	// Is in frustrum
+	// Is in frustrum **MAKES EVERYTHING DISAPPEAR***
 	//if (!CheckIfIsInFrustrum(mesh.vertices_out[vertIdx0]) || !CheckIfIsInFrustrum(mesh.vertices_out[vertIdx1]) || !CheckIfIsInFrustrum(mesh.vertices_out[vertIdx2])) return;
 
 
@@ -405,31 +405,30 @@ void dae::Renderer::RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vert
 	const float depthV1{ vert1.position.z };
 	const float depthV2{ vert2.position.z };
 
-	//const Vector2 v0{ Vertex1.position.GetXY() };
-	//const Vector2 v1{ Vertex2.position.GetXY() };
-	//const Vector2 v2{ Vertex3.position.GetXY() };
+	const float wV0{ vert0.position.w };
+	const float wV1{ vert1.position.w };
+	const float wV2{ vert2.position.w };
 
-	//const float wV0{ Vertex1.position.w };
-	//const float wV1{ Vertex2.position.w };
-	//const float wV2{ Vertex3.position.w };
+	const Vector2 v0uv{ vert0.uv };
+	const Vector2 v1uv{ vert1.uv };
+	const Vector2 v2uv{ vert2.uv };
 
-	//const Vector2 v0uv{ Vertex1.uv };
-	//const Vector2 v1uv{ Vertex2.uv };
-	//const Vector2 v2uv{ Vertex3.uv };
+	const Vector2 edge01{ posVert1 - posVert0 };
+	const Vector2 edge12{ posVert2 - posVert1 };
+	const Vector2 edge20{ posVert0 - posVert2};
 
-	//const Vector2 edge01{ v1 - v0 };
-	//const Vector2 edge12{ v2 - v1 };
-	//const Vector2 edge20{ v0 - v2 };
+	const float areaTriangle{ fabs(Vector2::Cross(posVert1 - posVert0, posVert2 - posVert0)) };
+
+	if (areaTriangle <= 0.01f)
+	{
+		return;
+	}
 
 	// Setting up bounding box
-	Vector2 boundingBoxMin{ Vector2::Min(posVert0, Vector2::Min(posVert1, posVert2))};
-	Vector2 boundingBoxMax{ Vector2::Max(posVert0, Vector2::Max(posVert1, posVert2)) };
+	//Vector2 boundingBoxMin{ Vector2::Min(posVert0, Vector2::Min(posVert1, posVert2))};
+	//Vector2 boundingBoxMax{ Vector2::Max(posVert0, Vector2::Max(posVert1, posVert2)) };
 
-	const Vector2 screenVector{ static_cast<float>(m_Width), static_cast<float>(m_Height) };
-
-	// Setting up bounding box in NDC
-	boundingBoxMin = Vector2::Max(Vector2::Zero, Vector2::Min(boundingBoxMin, screenVector));
-	boundingBoxMax = Vector2::Max(Vector2::Zero, Vector2::Min(boundingBoxMax, screenVector));
+	//const Vector2 screenVector{ static_cast<float>(m_Width), static_cast<float>(m_Height) };
 
 	const int bbBottom = std::min(static_cast<int>(std::min(posVert0.y, posVert1.y)), static_cast<int>(posVert2.y));
 	const int bbTop = std::max(static_cast<int>(std::max(posVert0.y, posVert1.y)), static_cast<int>(posVert2.y)) + 1;
@@ -440,15 +439,16 @@ void dae::Renderer::RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vert
 	// Is bb in Screen?
 	if (bbLeft <= 0 || bbRight >= m_Width - 1)
 		return;
-
+	
 	if (bbBottom <= 0 || bbTop >= m_Height - 1)
 		return;
 
-	const int offSet{ 1 };
+	const int offSet{ 0 };
 
 	//for (int px{ static_cast<int>(boundingBoxMin.x) }; px < boundingBoxMax.x; ++px)
 	//{
 	//	for (int py{ static_cast<int>(boundingBoxMin.y) }; py < boundingBoxMax.y; ++py)
+	  //{
 	for (int px{ bbLeft - offSet }; px < bbRight + offSet; ++px)
 		{
 		for (int py{ bbBottom - offSet }; py < bbTop + offSet; ++py)
@@ -456,21 +456,53 @@ void dae::Renderer::RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vert
 			// Final color variable
 			ColorRGB finalColor{ colors::Black };
 
-			const int pixelIdx{ px + py * m_Width };
-			const Vector2 pixelCoordinates{ static_cast<float>(px), static_cast<float>(py) };
-			
-			float signedAreaVert0_1{}, signedAreaVert1_2{}, signedAreaVert2_0{};
+			Vector2 pixel = { static_cast<float>(px), static_cast<float>(py) };
 
-			if (GeometryUtils::IsPointInTriangle(posVert0, posVert1,
-				posVert2, pixelCoordinates, signedAreaVert0_1, signedAreaVert1_2, signedAreaVert2_0))
-			{
-				const float triangleArea{ 1.f / (Vector2::Cross(posVert1 - posVert0,
-					posVert2 - posVert0)) };
+			const auto dir0 = pixel - posVert0;
+			const auto dir1 = pixel - posVert1;
+			const auto dir2 = pixel - posVert2;
 
-				const float weightV0{ signedAreaVert1_2 * triangleArea };
-				const float weightV1{ signedAreaVert2_0 * triangleArea };
-				const float weightV2{ signedAreaVert0_1 * triangleArea };
+			//const int pixelIdx{ px + py * m_Width };
+			//const Vector2 pixelCoordinates{ static_cast<float>(px), static_cast<float>(py) };
+			//
+			//float signedAreaVert0_1{}, signedAreaVert1_2{}, signedAreaVert2_0{};
 
+			//if (GeometryUtils::IsPointInTriangle(posVert0, posVert1,
+			//	posVert2, pixelCoordinates, signedAreaVert0_1, signedAreaVert1_2, signedAreaVert2_0))
+			//{
+
+				float weight0 = Vector2::Cross(edge12, dir1);
+				if (weight0 < 0) continue;
+
+				float weight1 = Vector2::Cross(edge20, dir2);
+				if (weight1 < 0) continue;
+
+				float weight2 = Vector2::Cross(edge01, dir0);
+				if (weight2 < 0) continue;
+
+
+				//const float triangleArea{ 1.f / (Vector2::Cross(posVert1 - posVert0,
+				//	posVert2 - posVert0)) };
+
+				//const float weightV0{ signedAreaVert1_2 * triangleArea };
+				//const float weightV1{ signedAreaVert2_0 * triangleArea };
+				//const float weightV2{ signedAreaVert0_1 * triangleArea };
+
+				weight0 /= areaTriangle;
+				weight1 /= areaTriangle;
+				weight2 /= areaTriangle;
+
+				const float ZBufferVal{
+						1.f /
+						((1 / depthV0) * weight0 +
+						(1 / depthV1) * weight1 +
+						(1 / depthV2) * weight2)
+				};
+
+				if (ZBufferVal > m_pDepthBufferPixels[px * m_Height + py])
+					continue;
+
+				m_pDepthBufferPixels[px * m_Height + py] = ZBufferVal;
 
 				// switch for changing between with or without depth buffer
 				switch (m_VisualizationMethod)
@@ -480,20 +512,27 @@ void dae::Renderer::RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vert
 					//sampling the UV coordinates and color
 					const float depthInterpolated
 					{
-						1.f / ((1.f / depthV0) * weightV0 +
-						(1.f / depthV1) * weightV1 +
-						(1.f / depthV2) * weightV2)
+						1.f / ((1.f / wV0) * weight0 +
+						(1.f / wV1) * weight1 +
+						(1.f / wV2) * weight2)
 					};
 
-					if (m_pDepthBufferPixels[pixelIdx] < depthInterpolated) continue;
-					m_pDepthBufferPixels[pixelIdx] = depthInterpolated;
-
-					Vector2 pixelUV
-					{
-						(mesh.vertices[vertIdx0].uv / depthV0 * weightV0 +
-						mesh.vertices[vertIdx1].uv / depthV1 * weightV1 +
-						mesh.vertices[vertIdx2].uv / depthV2 * weightV2) * depthInterpolated
+					const Vector2 pixelUV = {
+						((v0uv / wV0) * weight0 +
+							(v1uv / wV1) * weight1 +
+							(v2uv / wV2) * weight2) * depthInterpolated
 					};
+
+					// ERROR************
+					//if (m_pDepthBufferPixels[pixelIdx] < depthInterpolated) continue;
+					//m_pDepthBufferPixels[pixelIdx] = depthInterpolated;
+
+					//Vector2 pixelUV
+					//{
+					//	(mesh.vertices[vertIdx0].uv / depthV0 * weightV0 +
+					//	mesh.vertices[vertIdx1].uv / depthV1 * weightV1 +
+					//	mesh.vertices[vertIdx2].uv / depthV2 * weightV2) * depthInterpolated
+					//};
 
 					finalColor = m_pTexture->Sample(pixelUV);
 					break;
@@ -505,6 +544,20 @@ void dae::Renderer::RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vert
 					//float remapedBufferVal{ ZBufferVal };
 					//DepthRemap(remapedBufferVal, depthRemapSize);
 					//finalColor = ColorRGB{ remapedBufferVal, remapedBufferVal , remapedBufferVal };
+
+					float remapedBufferVal{ ZBufferVal };
+
+					/*depth = (depth - (1.f - topPercentile)) / topPercentile;
+
+					depth = std::max(0.f, depth);
+					depth = std::min(1.f, depth);*/
+
+					// depth remapping
+					remapedBufferVal = (remapedBufferVal - (1.f - depthRemapSize)) / depthRemapSize;
+					remapedBufferVal = std::max(0.f, remapedBufferVal);
+					remapedBufferVal = std::min(1.f, remapedBufferVal);
+
+					finalColor = ColorRGB{ remapedBufferVal, remapedBufferVal , remapedBufferVal };
 					break;
 				}
 				}
@@ -516,7 +569,7 @@ void dae::Renderer::RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vert
 					static_cast<uint8_t>(finalColor.r * 255),
 					static_cast<uint8_t>(finalColor.g * 255),
 					static_cast<uint8_t>(finalColor.b * 255));
-			}
+			//}
 		}
 	}
 
