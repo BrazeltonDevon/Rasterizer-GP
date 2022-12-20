@@ -405,6 +405,22 @@ void dae::Renderer::RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vert
 	const float depthV1{ vert1.position.z };
 	const float depthV2{ vert2.position.z };
 
+	//const Vector2 v0{ Vertex1.position.GetXY() };
+	//const Vector2 v1{ Vertex2.position.GetXY() };
+	//const Vector2 v2{ Vertex3.position.GetXY() };
+
+	//const float wV0{ Vertex1.position.w };
+	//const float wV1{ Vertex2.position.w };
+	//const float wV2{ Vertex3.position.w };
+
+	//const Vector2 v0uv{ Vertex1.uv };
+	//const Vector2 v1uv{ Vertex2.uv };
+	//const Vector2 v2uv{ Vertex3.uv };
+
+	//const Vector2 edge01{ v1 - v0 };
+	//const Vector2 edge12{ v2 - v1 };
+	//const Vector2 edge20{ v0 - v2 };
+
 	// Setting up bounding box
 	Vector2 boundingBoxMin{ Vector2::Min(posVert0, Vector2::Min(posVert1, posVert2))};
 	Vector2 boundingBoxMax{ Vector2::Max(posVert0, Vector2::Max(posVert1, posVert2)) };
@@ -415,16 +431,34 @@ void dae::Renderer::RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vert
 	boundingBoxMin = Vector2::Max(Vector2::Zero, Vector2::Min(boundingBoxMin, screenVector));
 	boundingBoxMax = Vector2::Max(Vector2::Zero, Vector2::Min(boundingBoxMax, screenVector));
 
-	for (int px{ static_cast<int>(boundingBoxMin.x) }; px < boundingBoxMax.x; ++px)
-	{
-		for (int py{ static_cast<int>(boundingBoxMin.y) }; py < boundingBoxMax.y; ++py)
+	const int bbBottom = std::min(static_cast<int>(std::min(posVert0.y, posVert1.y)), static_cast<int>(posVert2.y));
+	const int bbTop = std::max(static_cast<int>(std::max(posVert0.y, posVert1.y)), static_cast<int>(posVert2.y)) + 1;
+
+	const int bbLeft = std::min(static_cast<int>(std::min(posVert0.x, posVert1.x)), static_cast<int>(posVert2.x));
+	const int bbRight = std::max(static_cast<int>(std::max(posVert0.x, posVert1.x)), static_cast<int>(posVert2.x)) + 1;
+
+	// Is bb in Screen?
+	if (bbLeft <= 0 || bbRight >= m_Width - 1)
+		return;
+
+	if (bbBottom <= 0 || bbTop >= m_Height - 1)
+		return;
+
+	const int offSet{ 1 };
+
+	//for (int px{ static_cast<int>(boundingBoxMin.x) }; px < boundingBoxMax.x; ++px)
+	//{
+	//	for (int py{ static_cast<int>(boundingBoxMin.y) }; py < boundingBoxMax.y; ++py)
+	for (int px{ bbLeft - offSet }; px < bbRight + offSet; ++px)
+		{
+		for (int py{ bbBottom - offSet }; py < bbTop + offSet; ++py)
 		{
 			// Final color variable
 			ColorRGB finalColor{ colors::Black };
 
-
 			const int pixelIdx{ px + py * m_Width };
 			const Vector2 pixelCoordinates{ static_cast<float>(px), static_cast<float>(py) };
+			
 			float signedAreaVert0_1{}, signedAreaVert1_2{}, signedAreaVert2_0{};
 
 			if (GeometryUtils::IsPointInTriangle(posVert0, posVert1,
