@@ -132,6 +132,7 @@ void Renderer::VertexTransformationFunction(std::vector<Mesh>& meshes) const
 			vert_out.position.y = vert_out.position.y / vert_out.position.z / (m_Camera.fov);
 			mesh.vertices_out.emplace_back(vert_out);*/
 
+			// NDC space*****
 			vert_out.position = wvProjectionMatrix.TransformPoint({ vert_in.position, 1.0f });
 
 			vert_out.position.x /= vert_out.position.w;
@@ -247,6 +248,7 @@ void dae::Renderer::RenderW7()
 	{
 		Mesh{
 			{
+				// Verts (not vert outs, those are still empty)
 				Vertex{{-3, 3, -2}, colors::White, Vector2{0,0}},
 				Vertex{{0, 3, -2}, colors::White, Vector2{.5f,0}},
 				Vertex{{3, 3, -2}, colors::White, Vector2{1.f,0}},
@@ -258,10 +260,12 @@ void dae::Renderer::RenderW7()
 				Vertex{{3, -3, -2}, colors::White, Vector2{1.f,1.f}}
 				},
 		{
+			// Indices
 			3,0,4,1,5,2,
 			2,6,
 			6,3,7,4,8,5
 		},
+		// Primitive topology
 		PrimitiveTopology::TriangleStrip
 		}
 	};
@@ -290,42 +294,181 @@ void dae::Renderer::RenderW7()
 	//	}
 	//};
 
+	// Changes the vert outs
+	VertexTransformationFunction(meshes_world);
 
-	for (const auto& mesh : meshes_world)
+	for (auto& mesh : meshes_world)
 	{
-		//Check this later
-		std::vector<Vertex> vertices_ndc;
-		VertexTransformationFunction(mesh.vertices, vertices_ndc);
-		std::vector<Vector2> screenVertices;
-		screenVertices.reserve(vertices_ndc.size());
-		for (const auto& vertexNdc : vertices_ndc)
+		//VertexTransformationFunction(mesh.vertices, vertices_ndc);
+
+		//std::vector<Vertex> verts_ndc;
+		//std::vector<Vector2> screen_verts;
+		//
+		//screen_verts.reserve(verts_ndc.size());
+		//for (const auto& vert : verts_ndc)
+		//{
+		//	screen_verts.emplace_back(
+		//		Vector2{
+		//			// NDC
+		//			(vert.position.x + 1) * 0.5f * m_Width,
+		//			(1 - vert.position.y) * 0.5f * m_Height
+		//
+		//		}
+		//	);
+		//}
+
+		for (auto& vert : mesh.vertices_out)
 		{
-			screenVertices.emplace_back(
-				Vector2{
-					(vertexNdc.position.x + 1) * 0.5f * m_Width,
-					(1 - vertexNdc.position.y) * 0.5f * m_Height
-				}
-			);
+			// for every vert out
+			// that is projected via Vertextransformationfunction
+
+			// convert from NDC to screen space
+			vert = ConvertFromNDCtoScreen(vert);
 		}
 
-		switch (mesh.primitiveTopology)
+		for (int vertIdx{}; vertIdx < mesh.indices.size(); ++vertIdx)
 		{
-		case PrimitiveTopology::TriangleStrip:
-			for (size_t vertIdx{}; vertIdx < mesh.indices.size() - 2; ++vertIdx)
-			{
-				RenderTrianglesMesh(mesh, screenVertices, vertices_ndc, vertIdx, vertIdx % 2);
-			}
-			break;
-		case PrimitiveTopology::TriangleList:
-			for (size_t vertIdx{}; vertIdx < mesh.indices.size() - 2; vertIdx += 3)
-			{
-				RenderTrianglesMesh(mesh, screenVertices, vertices_ndc, vertIdx);
-			}
-			break;
+			RenderTrianglesMesh(mesh, mesh.vertices_out, mesh.vertices, vertIdx);
 		}
+		
 
 
 	}
+
+}
+
+void dae::Renderer::RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vertex_Out>& verts_out, const std::vector<Vertex> verts, size_t vertIdx)
+{
+
+	// Set up the proper indices for making the triangles based on the current idx
+	int vertIdx0{  };
+	int vertIdx1{  };
+	int vertIdx2{  };
+
+	if (mesh.primitiveTopology == PrimitiveTopology::TriangleList)
+	{
+		vertIdx0 = mesh.indices[vertIdx];
+		vertIdx1 = mesh.indices[vertIdx + 1];
+		vertIdx2 = mesh.indices[vertIdx + 2];
+		vertIdx += 2;
+	}
+	else if (mesh.primitiveTopology == PrimitiveTopology::TriangleStrip)
+	{
+		vertIdx0 = mesh.indices[vertIdx];
+
+		if (vertIdx % 2 == 0)
+		{
+			vertIdx1 = mesh.indices[vertIdx + 1];
+			vertIdx2 = mesh.indices[vertIdx + 2];
+		}
+		else
+		{
+			vertIdx1 = mesh.indices[vertIdx + 2];
+			vertIdx2 = mesh.indices[vertIdx + 1];
+		}
+
+		if (vertIdx + 3 >= mesh.indices.size())
+			vertIdx += 2;
+	}
+
+	if (vertIdx0 == vertIdx1 || vertIdx1 == vertIdx2 || vertIdx2 == vertIdx0) return;
+	// Is in frustrum
+	if (!CheckIfIsInFrustrum(mesh.vertices_out[vertIdx0]) || !CheckIfIsInFrustrum(mesh.vertices_out[vertIdx1]) || !CheckIfIsInFrustrum(mesh.vertices_out[vertIdx2])) return;
+
+
+	// make vert2s out of the vertexes for use with the code further on
+	auto vert0 = mesh.vertices_out[vertIdx0];
+	auto vert1 = mesh.vertices_out[vertIdx1];
+	auto vert2 = mesh.vertices_out[vertIdx2];
+
+
+
+	// Setting up bounding box
+	Vector2 boundingBoxMin{ Vector2::Min(verts_out[vertIdx0], Vector2::Min(verts_out[vertIdx1], verts_out[vertIdx2])) };
+	Vector2 boundingBoxMax{ Vector2::Max(verts_out[vertIdx0], Vector2::Max(verts_out[vertIdx1], verts_out[vertIdx2])) };
+
+	const Vector2 screenVector{ static_cast<float>(m_Width), static_cast<float>(m_Height) };
+
+	// Setting up bounding box in NDC
+	boundingBoxMin = Vector2::Max(Vector2::Zero, Vector2::Min(boundingBoxMin, screenVector));
+	boundingBoxMax = Vector2::Max(Vector2::Zero, Vector2::Min(boundingBoxMax, screenVector));
+
+
+
+	for (int px{ static_cast<int>(boundingBoxMin.x) }; px < boundingBoxMax.x; ++px)
+	{
+		for (int py{ static_cast<int>(boundingBoxMin.y) }; py < boundingBoxMax.y; ++py)
+		{
+			// Final color variable
+			ColorRGB finalColor{ colors::Black };
+
+
+			const int pixelIdx{ px + py * m_Width };
+			const Vector2 pixelCoordinates{ static_cast<float>(px), static_cast<float>(py) };
+			float signedAreaV0V1{}, signedAreaV1V2{}, signedAreaV2V0{};
+
+			if (GeometryUtils::IsPointInTriangle(verts_out[vertIdx0], verts_out[vertIdx1],
+				verts_out[vertIdx2], pixelCoordinates, signedAreaV0V1, signedAreaV1V2, signedAreaV2V0))
+			{
+				const float triangleArea{ 1.f / (Vector2::Cross(verts_out[vertIdx1] - verts_out[vertIdx0],
+					verts_out[vertIdx2] - verts_out[vertIdx0])) };
+
+				const float weightV0{ signedAreaV1V2 * triangleArea };
+				const float weightV1{ signedAreaV2V0 * triangleArea };
+				const float weightV2{ signedAreaV0V1 * triangleArea };
+
+				const float depthV0{ verts[vertIdx0].position.z };
+				const float depthV1{ verts[vertIdx1].position.z };
+				const float depthV2{ verts[vertIdx2].position.z };
+
+				// switch for changing between with or without depth buffer
+				switch (m_VisualizationMethod)
+				{
+				case VisualizationMethod::FinalColor:
+				{
+					//sampling the UV coordinates and color
+					const float depthInterpolated
+					{
+						1.f / ((1.f / depthV0) * weightV0 +
+						(1.f / depthV1) * weightV1 +
+						(1.f / depthV2) * weightV2)
+					};
+
+					if (m_pDepthBufferPixels[pixelIdx] < depthInterpolated) continue;
+					m_pDepthBufferPixels[pixelIdx] = depthInterpolated;
+
+					Vector2 pixelUV
+					{
+						(mesh.vertices[vertIdx0].uv / depthV0 * weightV0 +
+						mesh.vertices[vertIdx1].uv / depthV1 * weightV1 +
+						mesh.vertices[vertIdx2].uv / depthV2 * weightV2) * depthInterpolated
+					};
+
+					finalColor = m_pTexture->Sample(pixelUV);
+					break;
+				}
+				case VisualizationMethod::DepthBuffer:
+				{
+					const float depthRemapSize{ 0.005f };
+
+					//float remapedBufferVal{ ZBufferVal };
+					//DepthRemap(remapedBufferVal, depthRemapSize);
+					//finalColor = ColorRGB{ remapedBufferVal, remapedBufferVal , remapedBufferVal };
+					break;
+				}
+				}
+
+				//Update Color in Buffer
+				finalColor.MaxToOne();
+
+				m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+					static_cast<uint8_t>(finalColor.r * 255),
+					static_cast<uint8_t>(finalColor.g * 255),
+					static_cast<uint8_t>(finalColor.b * 255));
+			}
+		}
+	}
+
 
 }
 
@@ -424,6 +567,41 @@ void dae::Renderer::RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vect
 	}
 
 
+}
+
+Vertex_Out dae::Renderer::ConvertFromNDCtoScreen(const Vertex_Out& vert_out)
+{
+	Vertex_Out vertex{ vert_out };
+
+	// Doesn't change the original vertex, just returns the conversion from NDC to Screen space
+	
+	vertex.position.x = (vert_out.position.x + 1) * 0.5f * m_Width;
+	vertex.position.y = (1 - vert_out.position.y) * 0.5f * m_Height;
+	return vertex;
+}
+
+Vertex dae::Renderer::ConvertFromDNCtoScreen(const Vertex& vert)
+{
+	Vertex vertex{ vert };
+
+	// Doesn't change the original vertex, just returns the conversion from NDC to Screen space
+
+	vertex.position.x = (vert.position.x + 1) * 0.5f * m_Width;
+	vertex.position.y = (1 - vert.position.y) * 0.5f * m_Height;
+	return vertex;
+}
+
+bool dae::Renderer::CheckIfIsInFrustrum(const Vertex_Out& vert)
+{
+
+	if (vert.position.x < -1 || vert.position.x > 1)
+		return false;
+	else if (vert.position.y < -1 || vert.position.y > 1)
+		return  false;
+	else if (vert.position.z < 0 || vert.position.z > 1)
+		return  false;
+
+	return true;
 }
 
 void dae::Renderer::SwitchVisualizationMethod()

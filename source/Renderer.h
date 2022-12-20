@@ -62,8 +62,12 @@ namespace dae
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
 		void VertexTransformationFunction(std::vector<Mesh>& meshes) const;
 		void RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vector2>& screenVertices, const std::vector<Vertex> ndcVertices, size_t vertIdx, bool swapVertices = false);
-		//void ConvertFromNDCtoScreen();
+		void RenderTrianglesMesh(const Mesh& mesh, const std::vector<Vertex_Out>& verts_out, const std::vector<Vertex> verts, size_t vertIdx);
+		
+		Vertex_Out ConvertFromNDCtoScreen(const Vertex_Out& vert_out);
+		Vertex ConvertFromDNCtoScreen(const Vertex& vert);
 
+		bool CheckIfIsInFrustrum(const Vertex_Out& vert);
 
 		void RenderW6();
 		void RenderW7();
